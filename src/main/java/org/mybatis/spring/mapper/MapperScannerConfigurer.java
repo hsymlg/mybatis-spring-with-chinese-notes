@@ -87,6 +87,8 @@ import org.springframework.util.StringUtils;
  *
  * @see MapperFactoryBean
  * @see ClassPathMapperScanner
+ * MapperScan 注解解析后注册 Spring bean 的逻辑是由 MapperScannerConfigurer 实现的，
+ * 其实现 了 BeanDefinitionRegistryPostProcessor 接口的 postProcessBeanDefinitionRegistry 方法。
  */
 public class MapperScannerConfigurer
     implements BeanDefinitionRegistryPostProcessor, InitializingBean, ApplicationContextAware, BeanNameAware {
@@ -353,7 +355,8 @@ public class MapperScannerConfigurer
     if (this.processPropertyPlaceHolders) {
       processPropertyPlaceHolders();
     }
-
+    //扫描逻辑由 ClassPathMapperScanner 提供，其继承了 ClassPathBeanDefinitionScanner
+    //扫描指定包下的类并注册为 BeanDefinitionHolder 的能力。
     ClassPathMapperScanner scanner = new ClassPathMapperScanner(registry);
     scanner.setAddToConfig(this.addToConfig);
     scanner.setAnnotationClass(this.annotationClass);

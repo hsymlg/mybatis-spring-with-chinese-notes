@@ -91,19 +91,39 @@ public final class SqlSessionUtils {
   public static SqlSession getSqlSession(SqlSessionFactory sessionFactory, ExecutorType executorType,
       PersistenceExceptionTranslator exceptionTranslator) {
 
+    // SqlSessionFactory 和 ExecutorType 参数不可为 null
     notNull(sessionFactory, NO_SQL_SESSION_FACTORY_SPECIFIED);
     notNull(executorType, NO_EXECUTOR_TYPE_SPECIFIED);
 
+    //尝试从事务同步管理器中获取 SqlSessionHolder
+    //如果通过事务同步管理器 TransactionSynchronizationManager 获取不到 SqlSession，
+    //就会使用 SqlSessionFactory 新建一个 SqlSession，并尝试将获取的 SqlSession 注册到 TransactionSynchronizationManager
+
+    //每次获取 SqlSession 时是新建还是从事务同步管理器中获取决于事务同步管理器是否开启。
+    //事务同步管理器用于维护当前线程的同步资源，如判断当前线程是否已经开启了一个事务就需要查询事务同步管理器，
+    //以便后续根据事务传播方式决定是新开启一个事务或加入当前事务。Spring 支持使用注解开启事务或编程式事务。
+
+    //注解开启事务
+    //在 Spring 工程中可以通过添加 EnableTransactionManagement 注解来开启 Spring 事务管理。
+    // EnableTransactionManagement 注解的参数 mode = AdviceMode.PROXY
+    // 默认指定了加载代理事务管理器配置 ProxyTransactionManagementConfiguration，
+    // 在此配置中其默认地对使用 Transactional 注解的方法进行 AOP 代理。在代理逻辑中，
+    // 会调用 AbstractPlatformTransactionManager#getTransaction 方法获取当前线程对应的事务，
+    // 根据当前线程是否有活跃事务、事务传播属性等来配置事务。如果是新创建事务，
+    // 就会调用 TransactionSynchronizationManager#initSynchronization 方法来初始化当前线程在事务同步管理器中的资源。
     SqlSessionHolder holder = (SqlSessionHolder) TransactionSynchronizationManager.getResource(sessionFactory);
 
+    // 获取 SqlSession
     SqlSession session = sessionHolder(executorType, holder);
     if (session != null) {
       return session;
     }
 
+    // 新建 SqlSession
     LOGGER.debug(() -> "Creating a new SqlSession");
     session = sessionFactory.openSession(executorType);
 
+    // 将新建的 SqlSession 注册到事务同步管理器中
     registerSessionHolder(sessionFactory, executorType, exceptionTranslator, session);
 
     return session;
@@ -181,6 +201,9 @@ public final class SqlSessionUtils {
    *          a target SqlSession
    * @param sessionFactory
    *          a factory of SqlSession
+   * 在当前调用结束后 SqlSessionTemplate 会调动 closeSqlSession 方法来关闭 SqlSession，
+   * 如果事务同步管理器中存在当前线程绑定的 SqlSessionHolder，即当前调用被事务管理器管理，
+   * 则将 SqlSession 的持有释放掉。如果没被事务管理器管理，则会真实地关闭 SqlSession。
    */
   public static void closeSqlSession(SqlSession session, SqlSessionFactory sessionFactory) {
     notNull(session, NO_SQL_SESSION_SPECIFIED);
@@ -188,9 +211,11 @@ public final class SqlSessionUtils {
 
     SqlSessionHolder holder = (SqlSessionHolder) TransactionSynchronizationManager.getResource(sessionFactory);
     if ((holder != null) && (holder.getSqlSession() == session)) {
+      // 被事务管理器管理，释放 SqlSession
       LOGGER.debug(() -> "Releasing transactional SqlSession [" + session + "]");
       holder.released();
     } else {
+      // 真实地关闭 SqlSesion
       LOGGER.debug(() -> "Closing non transactional SqlSession [" + session + "]");
       session.close();
     }

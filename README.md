@@ -23,3 +23,8 @@ Essentials
 
 * [See the published docs](http://mybatis.github.io/spring/)
 * [See the snapshot docs](src/site/markdown) (Note: may contain explanation of unreleased features)
+
+SqlSessionFactoryBean 遵循 Spring FactoryBean 的定义，使得 SqlSessionFactory 注册在 Spring 容器中。
+SqlSessionTemplate 是 SqlSession 另一种线程安全版本的实现，并且能够更好地与 Spring 事务管理集成。
+MapperFactoryBean 是生成 mapper 接口代理类的 SqlSessionTemplate 版本实现。
+MapperScannerConfigurer 简化了生成 mapper 接口代理的逻辑，指定扫描的包即可将生成 mapper 接口代理类并注册为 Spring bean。

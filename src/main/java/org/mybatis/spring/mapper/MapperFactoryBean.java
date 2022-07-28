@@ -50,6 +50,8 @@ import org.springframework.beans.factory.FactoryBean;
  * @author Eduardo Macarron
  *
  * @see SqlSessionTemplate
+ * MapperFactoryBean 继承了 SqlSessionDaoSupport，其会根据传入的 SqlSessionFactory 来创建 SqlSessionTemplate，
+ * 并使用 SqlSessionTemplate 来生成代理类。
  */
 public class MapperFactoryBean<T> extends SqlSessionDaoSupport implements FactoryBean<T> {
 
@@ -92,6 +94,7 @@ public class MapperFactoryBean<T> extends SqlSessionDaoSupport implements Factor
    */
   @Override
   public T getObject() throws Exception {
+    // 使用 SqlSessionTemplate 来创建代理类
     return getSqlSession().getMapper(this.mapperInterface);
   }
 
