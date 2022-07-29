@@ -50,6 +50,8 @@ import org.springframework.util.StringUtils;
  * @see MapperFactoryBean
  * @see ClassPathMapperScanner
  * @since 1.2.0
+ * MapperScannerRegistrar实现了ImportBeanDefinitionRegistrar
+ * 在ConfigurationClassParser解析配置类的过程中，解析@Import标签
  */
 public class MapperScannerRegistrar implements ImportBeanDefinitionRegistrar, ResourceLoaderAware {
 
