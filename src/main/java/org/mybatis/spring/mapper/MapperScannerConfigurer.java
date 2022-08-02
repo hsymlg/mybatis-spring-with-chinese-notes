@@ -347,11 +347,12 @@ public class MapperScannerConfigurer
 
   /**
    * {@inheritDoc}
-   *
+   * 就是通过spring的机制最后执行postProcessBeanDefinitionRegistry方法，最后在这个方法中完成了扫描和注册
    * @since 1.0.2
    */
   @Override
   public void postProcessBeanDefinitionRegistry(BeanDefinitionRegistry registry) {
+    //这个值为true，前面传入进来的
     if (this.processPropertyPlaceHolders) {
       processPropertyPlaceHolders();
     }
@@ -374,7 +375,9 @@ public class MapperScannerConfigurer
     if (StringUtils.hasText(defaultScope)) {
       scanner.setDefaultScope(defaultScope);
     }
+    //通过自定义的扫描器，注册对应的过滤器
     scanner.registerFilters();
+    //通过自定义的扫描器，然后进行扫描
     scanner.scan(
         StringUtils.tokenizeToStringArray(this.basePackage, ConfigurableApplicationContext.CONFIG_LOCATION_DELIMITERS));
   }
@@ -385,10 +388,13 @@ public class MapperScannerConfigurer
    * fail. To avoid this, find any PropertyResourceConfigurers defined in the context and run them on this class' bean
    * definition. Then update the values.
    */
+  //BeanDefinitionRegistries在应用程序启动的早期，即BeanFactoryPostProcessors之前被调用。
+  //这意味着PropertyResourceConfigurers将不会被加载，并且此类属性的任何属性替换都将失败。
+  //为了避免这种情况，请找到上下文中定义的所有PropertyResourceConfigurers并在此类的bean定义上运行它们。然后更新值
   private void processPropertyPlaceHolders() {
     Map<String, PropertyResourceConfigurer> prcs = applicationContext.getBeansOfType(PropertyResourceConfigurer.class,
         false, false);
-
+    //一般的情况下都是为空
     if (!prcs.isEmpty() && applicationContext instanceof ConfigurableApplicationContext) {
       BeanDefinition mapperScannerBean = ((ConfigurableApplicationContext) applicationContext).getBeanFactory()
           .getBeanDefinition(beanName);
@@ -411,6 +417,7 @@ public class MapperScannerConfigurer
       this.lazyInitialization = getPropertyValue("lazyInitialization", values);
       this.defaultScope = getPropertyValue("defaultScope", values);
     }
+    //强制设置对应的属性
     this.basePackage = Optional.ofNullable(this.basePackage).map(getEnvironment()::resolvePlaceholders).orElse(null);
     this.sqlSessionFactoryBeanName = Optional.ofNullable(this.sqlSessionFactoryBeanName)
         .map(getEnvironment()::resolvePlaceholders).orElse(null);

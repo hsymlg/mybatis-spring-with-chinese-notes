@@ -68,9 +68,12 @@ public class MapperScannerRegistrar implements ImportBeanDefinitionRegistrar, Re
 
   /**
    * {@inheritDoc}
+   * 使用@Import，如果括号中的类是ImportBeanDefinitionRegistrar的实现类，
+   * 则会调用接口方法registerBeanDefinitions，将其中要注册的类注册成bean。
    */
   @Override
   public void registerBeanDefinitions(AnnotationMetadata importingClassMetadata, BeanDefinitionRegistry registry) {
+    //获取MapperScan的注解的元数据
     AnnotationAttributes mapperScanAttrs = AnnotationAttributes
         .fromMap(importingClassMetadata.getAnnotationAttributes(MapperScan.class.getName()));
     if (mapperScanAttrs != null) {
@@ -79,27 +82,38 @@ public class MapperScannerRegistrar implements ImportBeanDefinitionRegistrar, Re
     }
   }
 
+  /**
+   * 就是注册了一个BeanDefinition到容器中去，
+   * 而这个BeanDefinition对应的BeanClass是MapperScannerConfigurer类，实现了BeanDefinitionRegistryPostProcessor这个接口
+   */
   void registerBeanDefinitions(AnnotationMetadata annoMeta, AnnotationAttributes annoAttrs,
       BeanDefinitionRegistry registry, String beanName) {
 
+    //调用spring写的BeanDefinition的生成器，直接将MapperScannerConfigurer生成一个BeanDefinition，这个MapperScannerConfigurer实现了
+    //BeanDefinitionRegistryPostProcessor类
     BeanDefinitionBuilder builder = BeanDefinitionBuilder.genericBeanDefinition(MapperScannerConfigurer.class);
+    //添加对应的属性
     builder.addPropertyValue("processPropertyPlaceHolders", true);
 
+    //添加对应的属性和前面一样的道理
     Class<? extends Annotation> annotationClass = annoAttrs.getClass("annotationClass");
     if (!Annotation.class.equals(annotationClass)) {
       builder.addPropertyValue("annotationClass", annotationClass);
     }
 
+    //添加对应的属性
     Class<?> markerInterface = annoAttrs.getClass("markerInterface");
     if (!Class.class.equals(markerInterface)) {
       builder.addPropertyValue("markerInterface", markerInterface);
     }
 
+    //名字生成的规则
     Class<? extends BeanNameGenerator> generatorClass = annoAttrs.getClass("nameGenerator");
     if (!BeanNameGenerator.class.equals(generatorClass)) {
       builder.addPropertyValue("nameGenerator", BeanUtils.instantiateClass(generatorClass));
     }
 
+    //对应的属性
     Class<? extends MapperFactoryBean> mapperFactoryBeanClass = annoAttrs.getClass("factoryBean");
     if (!MapperFactoryBean.class.equals(mapperFactoryBeanClass)) {
       builder.addPropertyValue("mapperFactoryBeanClass", mapperFactoryBeanClass);
@@ -115,14 +129,16 @@ public class MapperScannerRegistrar implements ImportBeanDefinitionRegistrar, Re
       builder.addPropertyValue("sqlSessionFactoryBeanName", annoAttrs.getString("sqlSessionFactoryRef"));
     }
 
+    //扫描的路径
     List<String> basePackages = new ArrayList<>();
-
+    //如果配置了包路径则将入进去
     basePackages.addAll(Arrays.stream(annoAttrs.getStringArray("basePackages")).filter(StringUtils::hasText)
         .collect(Collectors.toList()));
 
     basePackages.addAll(Arrays.stream(annoAttrs.getClassArray("basePackageClasses")).map(ClassUtils::getPackageName)
         .collect(Collectors.toList()));
 
+    //如果获取的值都是为空的话，直接将当前加了@MapperScan注解的类的包名添加进去。
     if (basePackages.isEmpty()) {
       basePackages.add(getDefaultBasePackage(annoMeta));
     }
@@ -142,10 +158,12 @@ public class MapperScannerRegistrar implements ImportBeanDefinitionRegistrar, Re
     // for spring-native
     builder.setRole(BeanDefinition.ROLE_INFRASTRUCTURE);
 
+    //将这个BeanDefinition注册到容器中去
     registry.registerBeanDefinition(beanName, builder.getBeanDefinition());
 
   }
 
+  //生成对应的名字，生成的规则就是加了这个的注解的全类名#MapperScannerRegistrar#0
   private static String generateBaseBeanName(AnnotationMetadata importingClassMetadata, int index) {
     return importingClassMetadata.getClassName() + "#" + MapperScannerRegistrar.class.getSimpleName() + "#" + index;
   }
